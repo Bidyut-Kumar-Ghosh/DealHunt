@@ -1,3 +1,96 @@
+# Firebase Authentication for Deal Hunt
+
+This project implements Firebase Authentication for user signup, login, and profile management. The authentication system provides both email/password and Google authentication methods.
+
+## Authentication Features
+
+- **Email/Password Authentication**: Users can sign up and log in with their email and password
+- **Google Authentication**: Users can authenticate using their Google accounts
+- **Password Reset**: Forgot password functionality for users to reset their passwords
+- **Authentication State Management**: Global auth state management using React Context
+- **Route Protection**: Protected routes with automatic redirection for unauthenticated users
+
+## Implementation Details
+
+### Firebase Configuration
+
+Firebase is configured in `app/firebase/config.js` with the necessary authentication services initialized.
+
+### Authentication Flow
+
+1. **Initial Load**: The app checks the authentication state on load and redirects to the appropriate screen:
+
+   - If authenticated: Redirects to the main app tabs
+   - If not authenticated: Redirects to the login screen
+
+2. **Login Screen**:
+
+   - Handles email/password login via Firebase
+   - Provides Google authentication option
+   - Links to signup and forgot password screens
+
+3. **Signup Screen**:
+
+   - Validates user inputs
+   - Creates new user accounts with Firebase
+   - Updates user profile with display name
+   - Supports Google signup
+
+4. **Forgot Password**:
+
+   - Sends password reset emails via Firebase
+   - Confirms when reset link is sent
+
+5. **Profile Management**:
+   - Displays user information
+   - Provides logout functionality
+   - Shows authentication state
+
+### Protected Routes
+
+The `AuthGuard` component ensures that only authenticated users can access protected routes. It automatically redirects unauthenticated users to the login screen.
+
+### Authentication State
+
+The `AuthContext` provides global access to the authentication state throughout the app, including:
+
+- Current user information
+- Loading state during authentication checks
+
+## How to Use
+
+1. **Setup**:
+
+   - Ensure Firebase configuration in `app/firebase/config.js` has the correct credentials
+   - Install all dependencies with `npm install`
+
+2. **Run the App**:
+
+   - `npm start`: Starts the development server
+   - Use Expo Go app or web browser to access the application
+
+3. **Authentication Tests**:
+   - Test registration with new email addresses
+   - Test login with existing accounts
+   - Test Google authentication
+   - Test password reset functionality
+
+## Mobile-specific Considerations
+
+For Google authentication on mobile devices, additional setup is required:
+
+- For Android: Configure Google Services and update the GoogleService-Info.plist
+- For iOS: Set up Google Sign-In SDK and update Info.plist
+
+The current implementation provides placeholders for these platform-specific setups.
+
+## Future Enhancements
+
+- Add phone number authentication
+- Implement email verification
+- Add social login options (Facebook, Apple, etc.)
+- Enhance profile management with avatar uploads
+
 # Welcome to your Expo app 👋
 
 This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).

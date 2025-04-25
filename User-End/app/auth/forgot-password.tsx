@@ -1,8 +1,11 @@
 import { useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, KeyboardAvoidingView, Platform, ScrollView, Alert } from 'react-native';
-import { Link, useRouter } from 'expo-router';
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, Image, KeyboardAvoidingView, Platform, ScrollView, Alert } from 'react-native';
+import { useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { Ionicons } from '@expo/vector-icons';
+import { auth } from '../firebase/config';
+import { sendPasswordResetEmail } from 'firebase/auth';
+import { FirebaseError } from 'firebase/app';
 
 export default function ForgotPasswordScreen() {
     const router = useRouter();
@@ -10,18 +13,27 @@ export default function ForgotPasswordScreen() {
     const [isLoading, setIsLoading] = useState(false);
     const [isSubmitted, setIsSubmitted] = useState(false);
 
-    const handleSubmit = () => {
+    const handleSubmit = async () => {
         if (!email.trim()) {
             Alert.alert('Error', 'Please enter your email address');
             return;
         }
 
         setIsLoading(true);
-        // TODO: Implement actual password reset logic
-        setTimeout(() => {
-            setIsLoading(false);
+        try {
+            await sendPasswordResetEmail(auth, email.trim());
             setIsSubmitted(true);
-        }, 1500);
+        } catch (error: unknown) {
+            console.error('Password reset error:', error);
+            const firebaseError = error as FirebaseError;
+            Alert.alert('Error', firebaseError.message || 'Failed to send password reset email');
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    const goToLogin = () => {
+        router.push('/auth/login');
     };
 
     return (
@@ -33,7 +45,11 @@ export default function ForgotPasswordScreen() {
                 <StatusBar style="dark" />
 
                 <View style={styles.header}>
-                    <Text style={styles.logo}>Kifayati Bazar</Text>
+                    <Image
+                        source={require('@/assets/images/zar.com.png')}
+                        style={styles.logoImage}
+                        resizeMode="contain"
+                    />
                     <Text style={styles.subtitle}>
                         {isSubmitted
                             ? 'Check your email for reset instructions'
@@ -75,7 +91,7 @@ export default function ForgotPasswordScreen() {
                         </Text>
                         <TouchableOpacity
                             style={styles.backButton}
-                            onPress={() => router.push("login")}
+                            onPress={goToLogin}
                         >
                             <Text style={styles.backButtonText}>Back to Login</Text>
                         </TouchableOpacity>
@@ -84,11 +100,9 @@ export default function ForgotPasswordScreen() {
 
                 <View style={styles.loginContainer}>
                     <Text style={styles.loginText}>Remember your password? </Text>
-                    <Link href="login" asChild>
-                        <TouchableOpacity>
-                            <Text style={styles.loginLink}>Log In</Text>
-                        </TouchableOpacity>
-                    </Link>
+                    <TouchableOpacity onPress={goToLogin}>
+                        <Text style={styles.loginLink}>Log In</Text>
+                    </TouchableOpacity>
                 </View>
             </ScrollView>
         </KeyboardAvoidingView>
@@ -109,6 +123,11 @@ const styles = StyleSheet.create({
     header: {
         alignItems: 'center',
         marginBottom: 40,
+    },
+    logoImage: {
+        width: 200,
+        height: 80,
+        marginBottom: 16,
     },
     logo: {
         fontSize: 30,

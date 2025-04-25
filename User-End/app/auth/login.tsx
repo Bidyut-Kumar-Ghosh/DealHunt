@@ -1,8 +1,11 @@
-import { useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, Image, KeyboardAvoidingView, Platform, ScrollView } from 'react-native';
-import { Link, useRouter } from 'expo-router';
+import { useState, useEffect } from 'react';
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, Image, KeyboardAvoidingView, Platform, ScrollView, Alert } from 'react-native';
+import { useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import { Ionicons } from '@expo/vector-icons';
+import { Ionicons, FontAwesome } from '@expo/vector-icons';
+import { auth, googleProvider } from '../firebase/config';
+import { signInWithEmailAndPassword, signInWithPopup, signInWithCredential, GoogleAuthProvider } from 'firebase/auth';
+import { FirebaseError } from 'firebase/app';
 
 export default function LoginScreen() {
     const router = useRouter();
@@ -10,14 +13,62 @@ export default function LoginScreen() {
     const [password, setPassword] = useState('');
     const [showPassword, setShowPassword] = useState(false);
     const [isLoading, setIsLoading] = useState(false);
+    const [googleLoading, setGoogleLoading] = useState(false);
 
-    const handleLogin = () => {
+    const handleLogin = async () => {
+        if (!email || !password) {
+            alert('Please fill in all fields');
+            return;
+        }
+
         setIsLoading(true);
-        // TODO: Implement actual login logic
-        setTimeout(() => {
+        try {
+            await signInWithEmailAndPassword(auth, email, password);
+            router.replace('/tabs');
+        } catch (error: unknown) {
+            console.error('Login error:', error);
+            const firebaseError = error as FirebaseError;
+            alert('Login failed: ' + (firebaseError.message || 'Please check your credentials'));
+        } finally {
             setIsLoading(false);
-            router.replace('/(tabs)');
-        }, 1500);
+        }
+    };
+
+    const handleGoogleLogin = async () => {
+        setGoogleLoading(true);
+        try {
+            if (Platform.OS === 'web') {
+                // Web implementation
+                await signInWithPopup(auth, googleProvider);
+                router.replace('/tabs');
+            } else {
+                // For mobile, we need a different approach
+                // This is a simplified placeholder - actual implementation would require
+                // using the Google Identity SDK or Expo Google Sign In
+                alert('Google Sign In on mobile requires additional setup');
+                // In a complete implementation, you would:
+                // 1. Get ID token from Google Sign In SDK
+                // 2. Create a credential with the token
+                // 3. Sign in with the credential
+                // Example:
+                // const credential = GoogleAuthProvider.credential(idToken);
+                // await signInWithCredential(auth, credential);
+            }
+        } catch (error: unknown) {
+            console.error('Google login error:', error);
+            const firebaseError = error as FirebaseError;
+            alert('Google login failed: ' + (firebaseError.message || 'An error occurred'));
+        } finally {
+            setGoogleLoading(false);
+        }
+    };
+
+    const goToSignup = () => {
+        router.push('/auth/signup');
+    };
+
+    const goToForgotPassword = () => {
+        router.push('/auth/forgot-password');
     };
 
     return (
@@ -29,8 +80,12 @@ export default function LoginScreen() {
                 <StatusBar style="dark" />
 
                 <View style={styles.header}>
-                    <Text style={styles.logo}>Kifayati Bazar</Text>
-                    <Text style={styles.subtitle}>Welcome back! Log in to your account</Text>
+                    <Image
+                        source={require('@/assets/images/zar.com.png')}
+                        style={styles.logoImage}
+                        resizeMode="contain"
+                    />
+                    <Text style={styles.subtitle}>Log in to access your account</Text>
                 </View>
 
                 <View style={styles.form}>
@@ -67,16 +122,17 @@ export default function LoginScreen() {
                         </TouchableOpacity>
                     </View>
 
-                    <Link href="forgot-password" asChild>
-                        <TouchableOpacity style={styles.forgotPassword}>
-                            <Text style={styles.forgotPasswordText}>Forgot Password?</Text>
-                        </TouchableOpacity>
-                    </Link>
+                    <TouchableOpacity
+                        style={styles.forgotPasswordContainer}
+                        onPress={goToForgotPassword}
+                    >
+                        <Text style={styles.forgotPasswordText}>Forgot Password?</Text>
+                    </TouchableOpacity>
 
                     <TouchableOpacity
                         style={[styles.button, isLoading && styles.buttonLoading]}
                         onPress={handleLogin}
-                        disabled={isLoading}
+                        disabled={isLoading || googleLoading}
                     >
                         {isLoading ? (
                             <Text style={styles.buttonText}>Logging in...</Text>
@@ -85,13 +141,30 @@ export default function LoginScreen() {
                         )}
                     </TouchableOpacity>
 
+                    <View style={styles.dividerContainer}>
+                        <View style={styles.divider} />
+                        <Text style={styles.dividerText}>OR</Text>
+                        <View style={styles.divider} />
+                    </View>
+
+                    <TouchableOpacity
+                        style={styles.googleButton}
+                        onPress={handleGoogleLogin}
+                        disabled={isLoading || googleLoading}
+                    >
+                        <FontAwesome name="google" size={20} color="#DD4B39" style={styles.googleIcon} />
+                        {googleLoading ? (
+                            <Text style={styles.googleButtonText}>Connecting...</Text>
+                        ) : (
+                            <Text style={styles.googleButtonText}>Continue with Google</Text>
+                        )}
+                    </TouchableOpacity>
+
                     <View style={styles.signupContainer}>
                         <Text style={styles.signupText}>Don't have an account? </Text>
-                        <Link href="signup" asChild>
-                            <TouchableOpacity>
-                                <Text style={styles.signupLink}>Sign Up</Text>
-                            </TouchableOpacity>
-                        </Link>
+                        <TouchableOpacity onPress={goToSignup}>
+                            <Text style={styles.signupLink}>Sign Up</Text>
+                        </TouchableOpacity>
                     </View>
                 </View>
             </ScrollView>
@@ -113,6 +186,11 @@ const styles = StyleSheet.create({
     header: {
         alignItems: 'center',
         marginBottom: 40,
+    },
+    logoImage: {
+        width: 200,
+        height: 80,
+        marginBottom: 16,
     },
     logo: {
         fontSize: 30,
@@ -150,7 +228,7 @@ const styles = StyleSheet.create({
     eyeIcon: {
         padding: 8,
     },
-    forgotPassword: {
+    forgotPasswordContainer: {
         alignSelf: 'flex-end',
         marginBottom: 20,
     },
@@ -185,5 +263,39 @@ const styles = StyleSheet.create({
     signupLink: {
         color: '#2E7D32',
         fontWeight: 'bold',
+    },
+    dividerContainer: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        marginVertical: 20,
+    },
+    divider: {
+        flex: 1,
+        height: 1,
+        backgroundColor: '#ddd',
+    },
+    dividerText: {
+        color: '#666',
+        paddingHorizontal: 10,
+        fontSize: 14,
+    },
+    googleButton: {
+        flexDirection: 'row',
+        backgroundColor: 'white',
+        borderWidth: 1,
+        borderColor: '#ddd',
+        borderRadius: 8,
+        height: 50,
+        alignItems: 'center',
+        justifyContent: 'center',
+        marginBottom: 20,
+    },
+    googleIcon: {
+        marginRight: 10,
+    },
+    googleButtonText: {
+        color: '#333',
+        fontWeight: '600',
+        fontSize: 16,
     },
 }); 

@@ -1,8 +1,11 @@
 import { useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, KeyboardAvoidingView, Platform, ScrollView } from 'react-native';
-import { Link, useRouter } from 'expo-router';
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, Image, KeyboardAvoidingView, Platform, ScrollView, Alert } from 'react-native';
+import { useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import { Ionicons } from '@expo/vector-icons';
+import { Ionicons, FontAwesome } from '@expo/vector-icons';
+import { auth, googleProvider } from '../firebase/config';
+import { createUserWithEmailAndPassword, signInWithPopup, signInWithCredential, GoogleAuthProvider, updateProfile } from 'firebase/auth';
+import { FirebaseError } from 'firebase/app';
 
 export default function SignupScreen() {
     const router = useRouter();
@@ -13,14 +16,77 @@ export default function SignupScreen() {
     const [showPassword, setShowPassword] = useState(false);
     const [showConfirmPassword, setShowConfirmPassword] = useState(false);
     const [isLoading, setIsLoading] = useState(false);
+    const [googleLoading, setGoogleLoading] = useState(false);
 
-    const handleSignup = () => {
+    const handleSignup = async () => {
+        // Form validation
+        if (!name || !email || !password || !confirmPassword) {
+            Alert.alert('Error', 'Please fill in all fields');
+            return;
+        }
+
+        if (password !== confirmPassword) {
+            Alert.alert('Error', 'Passwords do not match');
+            return;
+        }
+
+        if (password.length < 6) {
+            Alert.alert('Error', 'Password must be at least 6 characters');
+            return;
+        }
+
         setIsLoading(true);
-        // TODO: Implement actual signup logic
-        setTimeout(() => {
+        try {
+            // Create user with email and password
+            const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+
+            // Update user profile with display name
+            await updateProfile(userCredential.user, {
+                displayName: name
+            });
+
+            console.log('Account created successfully!');
+            router.replace('/tabs');
+        } catch (error: unknown) {
+            console.error('Signup error:', error);
+            const firebaseError = error as FirebaseError;
+            Alert.alert('Signup Failed', firebaseError.message || 'An error occurred during signup');
+        } finally {
             setIsLoading(false);
-            router.replace('/(tabs)');
-        }, 1500);
+        }
+    };
+
+    const handleGoogleSignup = async () => {
+        setGoogleLoading(true);
+        try {
+            if (Platform.OS === 'web') {
+                // Web implementation
+                await signInWithPopup(auth, googleProvider);
+                router.replace('/tabs');
+            } else {
+                // For mobile, we need a different approach
+                // This is a simplified placeholder - actual implementation would require
+                // using the Google Identity SDK or Expo Google Sign In
+                Alert.alert('Information', 'Google Sign In on mobile requires additional setup');
+                // In a complete implementation, you would:
+                // 1. Get ID token from Google Sign In SDK
+                // 2. Create a credential with the token
+                // 3. Sign in with the credential
+                // Example:
+                // const credential = GoogleAuthProvider.credential(idToken);
+                // await signInWithCredential(auth, credential);
+            }
+        } catch (error: unknown) {
+            console.error('Google signup error:', error);
+            const firebaseError = error as FirebaseError;
+            Alert.alert('Google Signup Failed', firebaseError.message || 'An error occurred');
+        } finally {
+            setGoogleLoading(false);
+        }
+    };
+
+    const goToLogin = () => {
+        router.push('/auth/login');
     };
 
     return (
@@ -32,7 +98,11 @@ export default function SignupScreen() {
                 <StatusBar style="dark" />
 
                 <View style={styles.header}>
-                    <Text style={styles.logo}>Kifayati Bazar</Text>
+                    <Image
+                        source={require('@/assets/images/zar.com.png')}
+                        style={styles.logoImage}
+                        resizeMode="contain"
+                    />
                     <Text style={styles.subtitle}>Create your account to shop with us</Text>
                 </View>
 
@@ -105,7 +175,7 @@ export default function SignupScreen() {
                     <TouchableOpacity
                         style={[styles.button, isLoading && styles.buttonLoading]}
                         onPress={handleSignup}
-                        disabled={isLoading}
+                        disabled={isLoading || googleLoading}
                     >
                         {isLoading ? (
                             <Text style={styles.buttonText}>Creating Account...</Text>
@@ -114,13 +184,30 @@ export default function SignupScreen() {
                         )}
                     </TouchableOpacity>
 
+                    <View style={styles.dividerContainer}>
+                        <View style={styles.divider} />
+                        <Text style={styles.dividerText}>OR</Text>
+                        <View style={styles.divider} />
+                    </View>
+
+                    <TouchableOpacity
+                        style={styles.googleButton}
+                        onPress={handleGoogleSignup}
+                        disabled={isLoading || googleLoading}
+                    >
+                        <FontAwesome name="google" size={20} color="#DD4B39" style={styles.googleIcon} />
+                        {googleLoading ? (
+                            <Text style={styles.googleButtonText}>Connecting...</Text>
+                        ) : (
+                            <Text style={styles.googleButtonText}>Sign up with Google</Text>
+                        )}
+                    </TouchableOpacity>
+
                     <View style={styles.loginContainer}>
                         <Text style={styles.loginText}>Already have an account? </Text>
-                        <Link href="login" asChild>
-                            <TouchableOpacity>
-                                <Text style={styles.loginLink}>Log In</Text>
-                            </TouchableOpacity>
-                        </Link>
+                        <TouchableOpacity onPress={goToLogin}>
+                            <Text style={styles.loginLink}>Log In</Text>
+                        </TouchableOpacity>
                     </View>
                 </View>
             </ScrollView>
@@ -142,6 +229,11 @@ const styles = StyleSheet.create({
     header: {
         alignItems: 'center',
         marginBottom: 40,
+    },
+    logoImage: {
+        width: 200,
+        height: 80,
+        marginBottom: 16,
     },
     logo: {
         fontSize: 30,
@@ -207,5 +299,39 @@ const styles = StyleSheet.create({
     loginLink: {
         color: '#2E7D32',
         fontWeight: 'bold',
+    },
+    dividerContainer: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        marginVertical: 20,
+    },
+    divider: {
+        flex: 1,
+        height: 1,
+        backgroundColor: '#ddd',
+    },
+    dividerText: {
+        color: '#666',
+        paddingHorizontal: 10,
+        fontSize: 14,
+    },
+    googleButton: {
+        flexDirection: 'row',
+        backgroundColor: 'white',
+        borderWidth: 1,
+        borderColor: '#ddd',
+        borderRadius: 8,
+        height: 50,
+        alignItems: 'center',
+        justifyContent: 'center',
+        marginBottom: 20,
+    },
+    googleIcon: {
+        marginRight: 10,
+    },
+    googleButtonText: {
+        color: '#333',
+        fontWeight: '600',
+        fontSize: 16,
     },
 }); 
