@@ -1,71 +1,50 @@
-import { Stack, usePathname } from 'expo-router';
-import { StatusBar } from 'expo-status-bar';
-import { View, StyleSheet } from 'react-native';
-import { useEffect } from 'react';
-import { VideoView } from 'expo-video';
-import { VideoProvider, useVideo } from '@/hooks/useVideoContext';
+import { Stack } from 'expo-router';
+import { View, StyleSheet, Platform } from 'react-native';
+import { Video, ResizeMode } from 'expo-av';
+import { useEffect, useState } from 'react';
 
-// Wrapper component that uses the video context
-function AuthScreensWithVideo() {
-    const pathname = usePathname();
-    const { videoPlayer, showVideo, playVideo } = useVideo();
-
-    // Play video on navigation between auth screens
-    useEffect(() => {
-        playVideo();
-    }, [pathname]);
+export default function AuthLayout() {
+    const [videoReady, setVideoReady] = useState(false);
 
     return (
         <View style={styles.container}>
-            {showVideo && (
-                <View style={styles.videoOverlay}>
-                    <VideoView
-                        player={videoPlayer}
-                        style={styles.video}
-                        contentFit="contain"
-                        nativeControls={false}
-                    />
-                </View>
-            )}
+            {/* Background video */}
+            <Video
+                source={require('@/assets/images/Kifa.mp4')}
+                style={styles.video}
+                resizeMode={ResizeMode.COVER}
+                shouldPlay
+                isLooping
+                isMuted
+                onLoad={() => setVideoReady(true)}
+            />
+
+            {/* Stack navigator for auth screens */}
             <Stack screenOptions={{
                 headerShown: false,
-                contentStyle: { backgroundColor: 'white' }
+                contentStyle: {
+                    backgroundColor: 'transparent'
+                }
             }}>
                 <Stack.Screen name="login" />
                 <Stack.Screen name="signup" />
                 <Stack.Screen name="forgot-password" />
                 <Stack.Screen name="index" />
             </Stack>
-            <StatusBar style="dark" />
         </View>
-    );
-}
-
-// Main layout that provides the video context
-export default function AuthLayout() {
-    return (
-        <VideoProvider>
-            <AuthScreensWithVideo />
-        </VideoProvider>
     );
 }
 
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: 'white',
     },
-    videoOverlay: {
+    video: {
         position: 'absolute',
         top: 0,
         left: 0,
-        right: 0,
         bottom: 0,
-        zIndex: 10,
-        backgroundColor: 'white',
+        right: 0,
+        opacity: 0.6, // Make video semi-transparent
     },
-    video: {
-        width: '100%',
-        height: '100%',
-    }
 }); 
