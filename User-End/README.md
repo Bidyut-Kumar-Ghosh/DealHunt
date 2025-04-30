@@ -141,3 +141,42 @@ Join our community of developers creating universal apps.
 
 - [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
 - [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+
+## Firebase Google Authentication
+
+### Setup Instructions
+
+1. **Firebase Configuration**
+
+   - The project uses Firebase for authentication
+   - Make sure Firebase is properly initialized in `app/firebase/config.js`
+
+2. **Google Authentication**
+
+   - We use `@react-native-google-signin/google-signin` for native sign-in capabilities
+   - The web client ID is configured in the login files and comes from Firebase console
+   - For iOS, you need to place a `GoogleService-Info.plist` file in the project root
+   - For Android, you need to place a `google-services.json` file in the project root
+
+3. **Testing Google Sign-In**
+   - Web: Uses Firebase's `signInWithPopup` method
+   - iOS/Android: Uses `GoogleSignin` from the `@react-native-google-signin/google-signin` library
+
+### Required Files
+
+1. **Android Setup**
+
+   - Download `google-services.json` from Firebase console
+   - Place it in the project root directory
+   - Ensure SHA-1 certificate fingerprints are added to Firebase console
+
+2. **iOS Setup**
+   - Download `GoogleService-Info.plist` from Firebase console
+   - Place it in the project root directory
+   - URL scheme is already configured in `app.config.js`
+
+### Development Notes
+
+- Google Sign-In implementation is in `app/auth/login.tsx` and `app/auth/signup.tsx`
+- The Google provider is configured in `app/firebase/config.js`
+- For local development, you may need to run `npx expo prebuild` to apply native changes

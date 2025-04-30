@@ -80,125 +80,98 @@ const bannerImages = [
   require('@/assets/images/zar.com.png'),
 ];
 
-export default function Dashboard() {
+export default function TabsIndexScreen() {
   const router = useRouter();
-  const [activeSlide, setActiveSlide] = useState(0);
+  const [currentBanner, setCurrentBanner] = useState(0);
 
-  // Function to format the price with commas
-  const formatPrice = (price: number): string => {
-    return '₹' + price.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ',');
-  };
-
-  const renderProduct = ({ item }: { item: Product }) => {
-    const discountedPrice = item.price - (item.price * item.discount / 100);
-
-    return (
-      <TouchableOpacity style={styles.productCard}>
-        <View style={styles.discountBadge}>
-          <Text style={styles.discountText}>{item.discount}% OFF</Text>
-        </View>
-        <Image
-          source={item.image}
-          style={styles.productImage}
-          resizeMode="contain"
-        />
-        <Text style={styles.productName} numberOfLines={2}>{item.name}</Text>
-        <View style={styles.priceContainer}>
-          <Text style={styles.discountedPrice}>{formatPrice(discountedPrice)}</Text>
-          <Text style={styles.originalPrice}>{formatPrice(item.price)}</Text>
-        </View>
-        <TouchableOpacity style={styles.addToCartButton}>
-          <Ionicons name="cart-outline" size={16} color="white" />
-          <Text style={styles.addToCartText}>ADD</Text>
-        </TouchableOpacity>
-      </TouchableOpacity>
-    );
-  };
-
-  const renderBanner = () => {
-    return (
-      <View style={styles.bannerContainer}>
-        <ScrollView
-          horizontal
-          pagingEnabled
-          showsHorizontalScrollIndicator={false}
-          onMomentumScrollEnd={(event) => {
-            const slideIndex = Math.floor(event.nativeEvent.contentOffset.x / width + 0.5);
-            setActiveSlide(slideIndex);
-          }}
-        >
-          {bannerImages.map((image, index) => (
-            <Image
-              key={index}
-              source={image}
-              style={styles.bannerImage}
-              resizeMode="contain"
-            />
-          ))}
-        </ScrollView>
-        <View style={styles.pagination}>
-          {bannerImages.map((_, index) => (
-            <View
-              key={index}
-              style={[
-                styles.paginationDot,
-                index === activeSlide ? styles.paginationDotActive : {}
-              ]}
-            />
-          ))}
-        </View>
+  const renderProductItem = ({ item }: { item: Product }) => (
+    <TouchableOpacity style={styles.productCard}>
+      <View style={styles.discountBadge}>
+        <Text style={styles.discountText}>{item.discount}% OFF</Text>
       </View>
-    );
-  };
+      <Image source={item.image} style={styles.productImage} />
+      <Text style={styles.productName} numberOfLines={2}>{item.name}</Text>
+      <View style={styles.priceContainer}>
+        <Text style={styles.price}>₹{item.price}</Text>
+        <Text style={styles.originalPrice}>
+          ₹{Math.round(item.price / (1 - item.discount / 100))}
+        </Text>
+      </View>
+      <TouchableOpacity style={styles.addToCartButton}>
+        <Text style={styles.addToCartText}>Add to Cart</Text>
+      </TouchableOpacity>
+    </TouchableOpacity>
+  );
+
+  const renderCategoryItem = ({ item }: { item: Category }) => (
+    <TouchableOpacity
+      style={styles.categoryItem}
+      onPress={() => router.push(`/category/${item.id}`)}
+    >
+      <View style={styles.categoryIcon}>
+        <Ionicons name={item.icon} size={24} color="#2E7D32" />
+      </View>
+      <Text style={styles.categoryName}>{item.name}</Text>
+    </TouchableOpacity>
+  );
 
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar style="dark" />
 
-      {/* Header */}
-      <View style={styles.header}>
-        <Image
-          source={require('@/assets/images/zar.com.png')}
-          style={styles.logo}
-          resizeMode="contain"
-        />
-        <View style={styles.headerIcons}>
-          <TouchableOpacity style={styles.iconButton}>
-            <Ionicons name="search-outline" size={24} color="#333" />
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.iconButton}>
-            <Ionicons name="notifications-outline" size={24} color="#333" />
-          </TouchableOpacity>
-        </View>
-      </View>
-
       <ScrollView showsVerticalScrollIndicator={false}>
-        {/* Banner */}
-        {renderBanner()}
+        {/* Banner Carousel */}
+        <View style={styles.bannerContainer}>
+          <ScrollView
+            horizontal
+            pagingEnabled
+            showsHorizontalScrollIndicator={false}
+            onMomentumScrollEnd={(event) => {
+              const newIndex = Math.floor(
+                Math.floor(event.nativeEvent.contentOffset.x) /
+                Math.floor(width)
+              );
+              setCurrentBanner(newIndex);
+            }}
+          >
+            {bannerImages.map((image, index) => (
+              <Image
+                key={index}
+                source={image}
+                style={styles.bannerImage}
+                resizeMode="contain"
+              />
+            ))}
+          </ScrollView>
+          <View style={styles.paginationContainer}>
+            {bannerImages.map((_, index) => (
+              <View
+                key={index}
+                style={[
+                  styles.paginationDot,
+                  currentBanner === index && styles.paginationDotActive,
+                ]}
+              />
+            ))}
+          </View>
+        </View>
 
         {/* Categories */}
         <View style={styles.sectionContainer}>
           <View style={styles.sectionHeader}>
             <Text style={styles.sectionTitle}>Categories</Text>
-            <TouchableOpacity>
-              <Text style={styles.seeAllText}>See All</Text>
+            <TouchableOpacity onPress={() => router.push('/tabs/categories')}>
+              <Text style={styles.seeAll}>See All</Text>
             </TouchableOpacity>
           </View>
-
-          <ScrollView
+          <FlatList
+            data={categories}
+            renderItem={renderCategoryItem}
+            keyExtractor={(item) => item.id}
             horizontal
             showsHorizontalScrollIndicator={false}
             contentContainerStyle={styles.categoriesContainer}
-          >
-            {categories.map((category) => (
-              <TouchableOpacity key={category.id} style={styles.categoryItem}>
-                <View style={styles.categoryIconContainer}>
-                  <Ionicons name={category.icon} size={24} color="#2E7D32" />
-                </View>
-                <Text style={styles.categoryName}>{category.name}</Text>
-              </TouchableOpacity>
-            ))}
-          </ScrollView>
+          />
         </View>
 
         {/* Featured Products */}
@@ -206,13 +179,12 @@ export default function Dashboard() {
           <View style={styles.sectionHeader}>
             <Text style={styles.sectionTitle}>Featured Products</Text>
             <TouchableOpacity>
-              <Text style={styles.seeAllText}>See All</Text>
+              <Text style={styles.seeAll}>See All</Text>
             </TouchableOpacity>
           </View>
-
           <FlatList
             data={featuredProducts}
-            renderItem={renderProduct}
+            renderItem={renderProductItem}
             keyExtractor={(item) => item.id}
             horizontal
             showsHorizontalScrollIndicator={false}
@@ -220,33 +192,18 @@ export default function Dashboard() {
           />
         </View>
 
-        {/* Flash Sale */}
+        {/* New Arrivals */}
         <View style={styles.sectionContainer}>
-          <View style={styles.flashSaleHeader}>
-            <View style={styles.flashSaleTitleContainer}>
-              <Ionicons name="flash-outline" size={24} color="#FF3D00" />
-              <Text style={styles.flashSaleTitle}>Flash Sale</Text>
-            </View>
-            <View style={styles.timerContainer}>
-              <Text style={styles.timerText}>Ends in: </Text>
-              <View style={styles.timerBlock}>
-                <Text style={styles.timerDigit}>08</Text>
-              </View>
-              <Text style={styles.timerSeparator}>:</Text>
-              <View style={styles.timerBlock}>
-                <Text style={styles.timerDigit}>45</Text>
-              </View>
-              <Text style={styles.timerSeparator}>:</Text>
-              <View style={styles.timerBlock}>
-                <Text style={styles.timerDigit}>30</Text>
-              </View>
-            </View>
+          <View style={styles.sectionHeader}>
+            <Text style={styles.sectionTitle}>New Arrivals</Text>
+            <TouchableOpacity>
+              <Text style={styles.seeAll}>See All</Text>
+            </TouchableOpacity>
           </View>
-
           <FlatList
-            data={featuredProducts.slice(0, 3)}
-            renderItem={renderProduct}
-            keyExtractor={(item) => `flash-${item.id}`}
+            data={featuredProducts.slice().reverse()}
+            renderItem={renderProductItem}
+            keyExtractor={(item) => `new-${item.id}`}
             horizontal
             showsHorizontalScrollIndicator={false}
             contentContainerStyle={styles.productsContainer}
@@ -260,116 +217,96 @@ export default function Dashboard() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f5f5f5',
-  },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    backgroundColor: 'white',
-    borderBottomWidth: 1,
-    borderBottomColor: '#eee',
-  },
-  logo: {
-    width: 120,
-    height: 40,
-  },
-  headerIcons: {
-    flexDirection: 'row',
-  },
-  iconButton: {
-    marginLeft: 20,
+    backgroundColor: '#fff',
   },
   bannerContainer: {
     height: 180,
-    marginBottom: 16,
+    marginTop: 10,
   },
   bannerImage: {
-    width: width,
-    height: 180,
+    width,
+    height: 150,
   },
-  pagination: {
+  paginationContainer: {
     flexDirection: 'row',
-    position: 'absolute',
-    bottom: 10,
-    alignSelf: 'center',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginTop: 10,
   },
   paginationDot: {
     width: 8,
     height: 8,
     borderRadius: 4,
-    backgroundColor: 'rgba(255, 255, 255, 0.5)',
+    backgroundColor: '#ddd',
     marginHorizontal: 4,
   },
   paginationDotActive: {
-    backgroundColor: 'white',
+    backgroundColor: '#2E7D32',
   },
   sectionContainer: {
-    marginBottom: 20,
-    backgroundColor: 'white',
-    padding: 16,
-    borderRadius: 8,
-    marginHorizontal: 10,
+    marginTop: 20,
+    paddingHorizontal: 15,
   },
   sectionHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 16,
+    marginBottom: 15,
   },
   sectionTitle: {
     fontSize: 18,
     fontWeight: 'bold',
     color: '#333',
   },
-  seeAllText: {
+  seeAll: {
+    fontSize: 14,
     color: '#2E7D32',
-    fontWeight: 'bold',
+    fontWeight: '600',
   },
   categoriesContainer: {
-    paddingBottom: 8,
+    paddingVertical: 5,
   },
   categoryItem: {
     alignItems: 'center',
-    marginRight: 24,
+    marginRight: 20,
     width: 70,
   },
-  categoryIconContainer: {
+  categoryIcon: {
     width: 60,
     height: 60,
     borderRadius: 30,
-    backgroundColor: '#E8F5E9',
+    backgroundColor: '#f0f8f1',
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 8,
   },
   categoryName: {
     fontSize: 14,
-    textAlign: 'center',
     color: '#333',
+    textAlign: 'center',
   },
   productsContainer: {
-    paddingRight: 8,
+    paddingVertical: 10,
   },
   productCard: {
     width: ITEM_WIDTH,
-    backgroundColor: 'white',
-    borderRadius: 8,
-    marginRight: 16,
+    marginRight: 15,
+    backgroundColor: '#fff',
+    borderRadius: 10,
     padding: 10,
-    position: 'relative',
-    borderWidth: 1,
-    borderColor: '#eee',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 2,
   },
   discountBadge: {
     position: 'absolute',
     top: 10,
     left: 10,
-    backgroundColor: '#FF3D00',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
+    backgroundColor: '#F44336',
+    paddingHorizontal: 6,
+    paddingVertical: 3,
     borderRadius: 4,
     zIndex: 1,
   },
@@ -381,12 +318,13 @@ const styles = StyleSheet.create({
   productImage: {
     width: '100%',
     height: 120,
+    resizeMode: 'contain',
     marginBottom: 10,
   },
   productName: {
     fontSize: 14,
     color: '#333',
-    marginBottom: 8,
+    marginBottom: 6,
     height: 40,
   },
   priceContainer: {
@@ -394,11 +332,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 10,
   },
-  discountedPrice: {
+  price: {
     fontSize: 16,
     fontWeight: 'bold',
     color: '#2E7D32',
-    marginRight: 8,
+    marginRight: 6,
   },
   originalPrice: {
     fontSize: 14,
@@ -407,60 +345,24 @@ const styles = StyleSheet.create({
   },
   addToCartButton: {
     backgroundColor: '#2E7D32',
-    flexDirection: 'row',
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingVertical: 8,
+    paddingVertical: 6,
     borderRadius: 4,
+    alignItems: 'center',
   },
   addToCartText: {
     color: 'white',
-    fontWeight: 'bold',
     fontSize: 12,
-    marginLeft: 6,
+    fontWeight: '600',
   },
-  flashSaleHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 16,
-  },
-  flashSaleTitleContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  flashSaleTitle: {
-    fontSize: 18,
+  title: {
+    fontSize: 24,
     fontWeight: 'bold',
-    color: '#FF3D00',
-    marginLeft: 8,
+    marginBottom: 10,
+    color: '#2E7D32',
   },
-  timerContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  timerText: {
-    fontSize: 12,
+  subtitle: {
+    fontSize: 16,
     color: '#666',
-    marginRight: 4,
-  },
-  timerBlock: {
-    backgroundColor: '#333',
-    borderRadius: 4,
-    width: 28,
-    height: 28,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  timerDigit: {
-    color: 'white',
-    fontWeight: 'bold',
-    fontSize: 14,
-  },
-  timerSeparator: {
-    color: '#333',
-    fontSize: 14,
-    fontWeight: 'bold',
-    marginHorizontal: 4,
-  },
+    textAlign: 'center',
+  }
 });

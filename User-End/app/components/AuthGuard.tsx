@@ -12,9 +12,13 @@ export default function AuthGuard({ children }: AuthGuardProps) {
     const router = useRouter();
 
     useEffect(() => {
+        // Only run this effect if loading is done AND user is null
         if (!loading && !user) {
-            // User is not authenticated, redirect to login
-            router.replace('/auth/login');
+            console.log('AuthGuard: User not authenticated, redirecting to login');
+            // Use setTimeout to avoid navigation during render
+            setTimeout(() => {
+                router.replace('/auth/login');
+            }, 0);
         }
     }, [user, loading, router]);
 
@@ -33,8 +37,12 @@ export default function AuthGuard({ children }: AuthGuardProps) {
     }
 
     // This should not be visible, as we redirect in the useEffect,
-    // but returning null as a fallback
-    return null;
+    // but returning loading indicator as a fallback
+    return (
+        <View style={styles.loadingContainer}>
+            <ActivityIndicator size="large" color="#2E7D32" />
+        </View>
+    );
 }
 
 const styles = StyleSheet.create({

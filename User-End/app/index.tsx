@@ -1,8 +1,9 @@
 import { Redirect } from 'expo-router';
 import { useEffect, useState } from 'react';
+import { View, ActivityIndicator, StyleSheet } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-function Index() {
+export default function Index() {
     const [isLoggedIn, setIsLoggedIn] = useState<boolean | null>(null);
 
     useEffect(() => {
@@ -19,13 +20,24 @@ function Index() {
         checkLoggedInStatus();
     }, []);
 
-    // Show nothing while checking login status
+    // Show loading indicator while checking login status
     if (isLoggedIn === null) {
-        return null;
+        return (
+            <View style={styles.container}>
+                <ActivityIndicator size="large" color="#2E7D32" />
+            </View>
+        );
     }
 
     // Redirect based on login status
-    return isLoggedIn ? <Redirect href="/tabs" /> : <Redirect href="/auth" />;
+    return isLoggedIn ? <Redirect href="/tabs" /> : <Redirect href="/auth/login" />;
 }
 
-export default Index; 
+const styles = StyleSheet.create({
+    container: {
+        flex: 1,
+        justifyContent: 'center',
+        alignItems: 'center',
+        backgroundColor: '#fff',
+    },
+}); 

@@ -1,11 +1,28 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, Image, KeyboardAvoidingView, Platform, ScrollView, Alert } from 'react-native';
 import { useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { Ionicons, FontAwesome } from '@expo/vector-icons';
 import { auth, googleProvider } from '../firebase/config';
-import { createUserWithEmailAndPassword, signInWithPopup, signInWithCredential, GoogleAuthProvider, updateProfile } from 'firebase/auth';
+import {
+    createUserWithEmailAndPassword,
+    signInWithPopup,
+    signInWithCredential,
+    GoogleAuthProvider,
+    updateProfile
+} from 'firebase/auth';
 import { FirebaseError } from 'firebase/app';
+import * as WebBrowser from 'expo-web-browser';
+import * as Google from 'expo-auth-session/providers/google';
+
+// Make sure WebBrowser can complete auth session
+WebBrowser.maybeCompleteAuthSession();
+
+// OAuth Client IDs
+const IOS_CLIENT_ID = '177255088932-g9l2nbtvicsh6tiqskrl3r9h3gvk352g.apps.googleusercontent.com';
+const ANDROID_CLIENT_ID = '177255088932-g9l2nbtvicsh6tiqskrl3r9h3gvk352g.apps.googleusercontent.com';
+const WEB_CLIENT_ID = '177255088932-g9l2nbtvicsh6tiqskrl3r9h3gvk352g.apps.googleusercontent.com';
+const EXPO_REDIRECT_URI = 'https://auth.expo.io/@kifayatibazar/kifayati-bazar';
 
 export default function SignupScreen() {
     const router = useRouter();
@@ -17,6 +34,58 @@ export default function SignupScreen() {
     const [showConfirmPassword, setShowConfirmPassword] = useState(false);
     const [isLoading, setIsLoading] = useState(false);
     const [googleLoading, setGoogleLoading] = useState(false);
+
+    // Set up Google Auth Request with expo-auth-session
+    const [request, response, promptAsync] = Google.useAuthRequest({
+        clientId: WEB_CLIENT_ID,
+        iosClientId: IOS_CLIENT_ID,
+        androidClientId: ANDROID_CLIENT_ID,
+        scopes: ['profile', 'email'],
+        redirectUri: Platform.select({
+            native: 'com.kifayatibazar.app:/oauth2redirect',
+            default: EXPO_REDIRECT_URI
+        }),
+        selectAccount: true,
+    });
+
+    // Handle the auth session response
+    useEffect(() => {
+        if (response?.type === 'success') {
+            setGoogleLoading(true);
+
+            // Extract auth tokens
+            const { id_token, access_token } = response.params;
+
+            if (!id_token) {
+                console.error('No ID token received from Google');
+                Alert.alert('Authentication Error', 'Failed to get authentication token from Google');
+                setGoogleLoading(false);
+                return;
+            }
+
+            // Create credential with both tokens when available
+            const credential = access_token
+                ? GoogleAuthProvider.credential(id_token, access_token)
+                : GoogleAuthProvider.credential(id_token);
+
+            signInWithCredential(auth, credential)
+                .then((result) => {
+                    console.log('Google auth successful!', result.user.displayName);
+                    router.replace('/tabs');
+                })
+                .catch((error) => {
+                    console.error('Google auth error:', error);
+                    Alert.alert('Authentication Error', 'Failed to authenticate with Google: ' + error.message);
+                })
+                .finally(() => {
+                    setGoogleLoading(false);
+                });
+        } else if (response?.type === 'error') {
+            console.error('Google auth response error:', response.error);
+            Alert.alert('Authentication Error', `Error connecting to Google: ${response.error?.message || 'Unknown error'}`);
+            setGoogleLoading(false);
+        }
+    }, [response, router]);
 
     const handleSignup = async () => {
         // Form validation
@@ -64,23 +133,20 @@ export default function SignupScreen() {
                 await signInWithPopup(auth, googleProvider);
                 router.replace('/tabs');
             } else {
-                // For mobile, we need a different approach
-                // This is a simplified placeholder - actual implementation would require
-                // using the Google Identity SDK or Expo Google Sign In
-                Alert.alert('Information', 'Google Sign In on mobile requires additional setup');
-                // In a complete implementation, you would:
-                // 1. Get ID token from Google Sign In SDK
-                // 2. Create a credential with the token
-                // 3. Sign in with the credential
-                // Example:
-                // const credential = GoogleAuthProvider.credential(idToken);
-                // await signInWithCredential(auth, credential);
+                // Mobile implementation using Expo AuthSession
+                if (!request) {
+                    Alert.alert('Google Sign In', 'Unable to start Google authentication process.');
+                    setGoogleLoading(false);
+                    return;
+                }
+
+                await promptAsync();
+                // The actual sign-in happens in the useEffect when the response comes back
             }
         } catch (error: unknown) {
             console.error('Google signup error:', error);
             const firebaseError = error as FirebaseError;
             Alert.alert('Google Signup Failed', firebaseError.message || 'An error occurred');
-        } finally {
             setGoogleLoading(false);
         }
     };

@@ -3,13 +3,11 @@ import { View, Text, StyleSheet, SafeAreaView, TouchableOpacity, Alert, Image, S
 import { StatusBar } from 'expo-status-bar';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import { signOut } from 'firebase/auth';
-import { auth } from '../firebase/config';
 import { useAuth } from '../context/AuthContext';
 
 export default function ProfileScreen() {
     const router = useRouter();
-    const { user } = useAuth();
+    const { user, logout } = useAuth();
     const [isLoading, setIsLoading] = useState(false);
 
     const handleLogout = async () => {
@@ -23,17 +21,20 @@ export default function ProfileScreen() {
                 },
                 {
                     text: 'Logout',
-                    onPress: async () => {
+                    onPress: () => {
                         setIsLoading(true);
-                        try {
-                            await signOut(auth);
-                            // The AuthGuard will automatically redirect to login
-                        } catch (error) {
-                            console.error('Logout error:', error);
-                            Alert.alert('Error', 'Failed to logout. Please try again.');
-                        } finally {
-                            setIsLoading(false);
-                        }
+                        logout()
+                            .then(() => {
+                                // Force navigation to login screen after logout
+                                router.replace('/auth/login');
+                            })
+                            .catch(error => {
+                                console.error('Logout error:', error);
+                                Alert.alert('Error', 'Failed to logout. Please try again.');
+                            })
+                            .finally(() => {
+                                setIsLoading(false);
+                            });
                     },
                 },
             ],

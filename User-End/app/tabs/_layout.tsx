@@ -1,17 +1,24 @@
 import { Tabs } from 'expo-router';
-import React from 'react';
+import React, { useEffect } from 'react';
 import { Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { usePathname, useRouter } from 'expo-router';
 
 import { HapticTab } from '@/components/HapticTab';
-import { IconSymbol } from '@/components/ui/IconSymbol';
 import TabBarBackground from '@/components/ui/TabBarBackground';
-import { Colors } from '@/constants/Colors';
-import { useColorScheme } from '@/hooks/useColorScheme';
 import AuthGuard from '../components/AuthGuard';
 
 export default function TabLayout() {
-  const colorScheme = useColorScheme();
+  const pathname = usePathname();
+  const router = useRouter();
+
+  // Handle direct access to profile page
+  useEffect(() => {
+    if (pathname === '/tabs/profile' || pathname === '/profile') {
+      // Make sure "profile" tab is selected
+      console.log('Direct access to profile detected');
+    }
+  }, [pathname]);
 
   return (
     <AuthGuard>
@@ -23,11 +30,14 @@ export default function TabLayout() {
           tabBarBackground: TabBarBackground,
           tabBarStyle: Platform.select({
             ios: {
-              // Use a transparent background on iOS to show the blur effect
-              position: 'absolute',
+              backgroundColor: '#ffffff',
             },
-            default: {},
+            default: {
+              backgroundColor: '#ffffff',
+            },
           }),
+          tabBarInactiveTintColor: '#666666',
+          tabBarLabelStyle: { fontSize: 12 },
         }}>
         <Tabs.Screen
           name="index"
