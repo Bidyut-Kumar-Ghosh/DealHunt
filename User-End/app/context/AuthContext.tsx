@@ -1,6 +1,7 @@
 import React, { createContext, useState, useContext, useEffect } from 'react';
 import { auth } from '../firebase/config';
-import { User, onAuthStateChanged, signOut } from 'firebase/auth';
+import { User, onAuthStateChanged, signOut, Auth } from 'firebase/auth';
+import { Platform } from 'react-native';
 
 // Define the context types
 type AuthContextType = {
@@ -23,10 +24,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     useEffect(() => {
         // Set up the auth state listener
-        const unsubscribe = onAuthStateChanged(auth, (authUser) => {
+        const unsubscribe = onAuthStateChanged(auth as Auth, (authUser) => {
             setUser(authUser);
             setLoading(false);
         });
+
+        // No longer trying to get redirect result since it's causing errors
+        // Firebase will handle this automatically through onAuthStateChanged
 
         // Clean up the listener on unmount
         return () => unsubscribe();
@@ -37,7 +41,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         try {
             // This will trigger the onAuthStateChanged listener
             // which will set user to null and the AuthGuard will redirect
-            return await signOut(auth);
+            return await signOut(auth as Auth);
         } catch (error) {
             console.error('Error signing out:', error);
             throw error; // Rethrow the error so it can be caught by the component

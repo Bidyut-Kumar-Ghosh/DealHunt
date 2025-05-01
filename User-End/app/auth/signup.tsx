@@ -1,28 +1,19 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, Image, KeyboardAvoidingView, Platform, ScrollView, Alert } from 'react-native';
 import { useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { Ionicons, FontAwesome } from '@expo/vector-icons';
-import { auth, googleProvider } from '../firebase/config';
+import { auth } from '../firebase/config';
 import {
     createUserWithEmailAndPassword,
     signInWithPopup,
-    signInWithCredential,
+    signInWithRedirect,
+    getRedirectResult,
     GoogleAuthProvider,
-    updateProfile
+    updateProfile,
+    Auth
 } from 'firebase/auth';
 import { FirebaseError } from 'firebase/app';
-import * as WebBrowser from 'expo-web-browser';
-import * as Google from 'expo-auth-session/providers/google';
-
-// Make sure WebBrowser can complete auth session
-WebBrowser.maybeCompleteAuthSession();
-
-// OAuth Client IDs
-const IOS_CLIENT_ID = '177255088932-g9l2nbtvicsh6tiqskrl3r9h3gvk352g.apps.googleusercontent.com';
-const ANDROID_CLIENT_ID = '177255088932-g9l2nbtvicsh6tiqskrl3r9h3gvk352g.apps.googleusercontent.com';
-const WEB_CLIENT_ID = '177255088932-g9l2nbtvicsh6tiqskrl3r9h3gvk352g.apps.googleusercontent.com';
-const EXPO_REDIRECT_URI = 'https://auth.expo.io/@kifayatibazar/kifayati-bazar';
 
 export default function SignupScreen() {
     const router = useRouter();
@@ -34,58 +25,6 @@ export default function SignupScreen() {
     const [showConfirmPassword, setShowConfirmPassword] = useState(false);
     const [isLoading, setIsLoading] = useState(false);
     const [googleLoading, setGoogleLoading] = useState(false);
-
-    // Set up Google Auth Request with expo-auth-session
-    const [request, response, promptAsync] = Google.useAuthRequest({
-        clientId: WEB_CLIENT_ID,
-        iosClientId: IOS_CLIENT_ID,
-        androidClientId: ANDROID_CLIENT_ID,
-        scopes: ['profile', 'email'],
-        redirectUri: Platform.select({
-            native: 'com.kifayatibazar.app:/oauth2redirect',
-            default: EXPO_REDIRECT_URI
-        }),
-        selectAccount: true,
-    });
-
-    // Handle the auth session response
-    useEffect(() => {
-        if (response?.type === 'success') {
-            setGoogleLoading(true);
-
-            // Extract auth tokens
-            const { id_token, access_token } = response.params;
-
-            if (!id_token) {
-                console.error('No ID token received from Google');
-                Alert.alert('Authentication Error', 'Failed to get authentication token from Google');
-                setGoogleLoading(false);
-                return;
-            }
-
-            // Create credential with both tokens when available
-            const credential = access_token
-                ? GoogleAuthProvider.credential(id_token, access_token)
-                : GoogleAuthProvider.credential(id_token);
-
-            signInWithCredential(auth, credential)
-                .then((result) => {
-                    console.log('Google auth successful!', result.user.displayName);
-                    router.replace('/tabs');
-                })
-                .catch((error) => {
-                    console.error('Google auth error:', error);
-                    Alert.alert('Authentication Error', 'Failed to authenticate with Google: ' + error.message);
-                })
-                .finally(() => {
-                    setGoogleLoading(false);
-                });
-        } else if (response?.type === 'error') {
-            console.error('Google auth response error:', response.error);
-            Alert.alert('Authentication Error', `Error connecting to Google: ${response.error?.message || 'Unknown error'}`);
-            setGoogleLoading(false);
-        }
-    }, [response, router]);
 
     const handleSignup = async () => {
         // Form validation
@@ -107,7 +46,7 @@ export default function SignupScreen() {
         setIsLoading(true);
         try {
             // Create user with email and password
-            const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+            const userCredential = await createUserWithEmailAndPassword(auth as Auth, email, password);
 
             // Update user profile with display name
             await updateProfile(userCredential.user, {
@@ -128,20 +67,44 @@ export default function SignupScreen() {
     const handleGoogleSignup = async () => {
         setGoogleLoading(true);
         try {
-            if (Platform.OS === 'web') {
-                // Web implementation
-                await signInWithPopup(auth, googleProvider);
-                router.replace('/tabs');
-            } else {
-                // Mobile implementation using Expo AuthSession
-                if (!request) {
-                    Alert.alert('Google Sign In', 'Unable to start Google authentication process.');
-                    setGoogleLoading(false);
-                    return;
-                }
+            // Create Google Auth Provider with scopes
+            const provider = new GoogleAuthProvider();
+            provider.addScope('profile');
+            provider.addScope('email');
 
-                await promptAsync();
-                // The actual sign-in happens in the useEffect when the response comes back
+            // Only use popup on web
+            if (Platform.OS === 'web') {
+                try {
+                    // Web implementation using popup
+                    const result = await signInWithPopup(auth as Auth, provider);
+                    const user = result.user;
+                    console.log('Google sign-up successful', user.displayName);
+                    router.replace('/tabs');
+                } catch (error: any) {
+                    console.error('Google sign-up error:', error);
+
+                    // Specific error handling
+                    if (error.code === 'auth/popup-blocked') {
+                        Alert.alert('Authentication Error', 'Popup was blocked by your browser. Please allow popups for this site.');
+                    } else if (error.code === 'auth/popup-closed-by-user') {
+                        console.log('Popup closed by user');
+                    } else {
+                        Alert.alert('Authentication Error', error.message || 'Failed to authenticate with Google');
+                    }
+                    setGoogleLoading(false);
+                }
+            } else {
+                // For mobile platforms, show an alert that this feature is not available
+                Alert.alert(
+                    'Feature Not Available',
+                    'Google signup is currently not available on mobile. Please use email/password signup.',
+                    [
+                        {
+                            text: 'OK',
+                            onPress: () => setGoogleLoading(false)
+                        }
+                    ]
+                );
             }
         } catch (error: unknown) {
             console.error('Google signup error:', error);
@@ -265,7 +228,7 @@ export default function SignupScreen() {
                         {googleLoading ? (
                             <Text style={styles.googleButtonText}>Connecting...</Text>
                         ) : (
-                            <Text style={styles.googleButtonText}>Sign up with Google</Text>
+                            <Text style={styles.googleButtonText}>Continue with Google</Text>
                         )}
                     </TouchableOpacity>
 

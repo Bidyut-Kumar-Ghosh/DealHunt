@@ -16,7 +16,6 @@ module.exports = {
     ios: {
       supportsTablet: true,
       bundleIdentifier: "com.kifayatibazar.app",
-      googleServicesFile: "./GoogleService-Info.plist",
       infoPlist: {
         CFBundleURLTypes: [
           {
@@ -42,7 +41,20 @@ module.exports = {
         backgroundColor: "#ffffff",
       },
       package: "com.kifayatibazar.app",
-      googleServicesFile: "./google-services.json",
+      intentFilters: [
+        {
+          action: "VIEW",
+          autoVerify: true,
+          data: [
+            {
+              scheme: "https",
+              host: "*.kifayatibazar.app",
+              pathPrefix: "/oauth2redirect",
+            },
+          ],
+          category: ["BROWSABLE", "DEFAULT"],
+        },
+      ],
     },
     web: {
       bundler: "metro",
